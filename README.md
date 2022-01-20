@@ -1,39 +1,22 @@
 # genshin_achievements
 
 #### 介绍
-成就导出，基于paddle-ocr。
-增加了比对参考，因为2.4.0成就非我整理，里面字符串可能与导出的不完全匹配，但是可以当作参考。
-我尽可能肝完成就导出一份标准的吧。/doge/
+基于图像处理和字符识别，将原神中的成就导出为excel 并与全成就列表比对，从而知道自己哪些成就未完成。
 
-#### 软件架构
-软件架构说明
+#### 怎么运行
+https://www.bilibili.com/video/BV1v44y1L7Et?share_source=copy_web
 
+对于后续的新版本(我也许会更新吧)，只需要
+1、在已知栏目.txt 里添加成就栏目名字
+2、获取最新的成就列表。有专门的网站https://docs.qq.com/sheet/DS01hbnZwZm5KVnBB?tab=d7oz1q
+3、打开原神（1960x1080独占全屏，电脑分辨率同），进入成就并进入具体栏目，管理员身份运行main.py（稍等一会儿，按'r'键启动），导出自己的成就列表。(目前运行时间约10min,把语音播报禁用会快几分钟。）
+4、运行test.py，与最新的成就列表进行比对，生成compare_ans.xlsx。
 
-#### 安装教程
-
-1.  xxxx
-2.  xxxx
-3.  xxxx
-
-#### 使用说明
-
-1.  xxxx
-2.  xxxx
-3.  xxxx
-
-#### 参与贡献
-
-1.  Fork 本仓库
-2.  新建 Feat_xxx 分支
-3.  提交代码
-4.  新建 Pull Request
+就可以直接查看自己哪些成就未做。
 
 
-#### 特技
+#### 后续改进点
+1、翻页需要1.5s 是最费时间的过程，暂未找到更快的翻页方法。
+2、多线程或许可以节省时间。一个线程获取图片，另一个线程用来识别。
+3、做成网页版或者应用程序。（目前懒得整）
 
-1.  使用 Readme\_XXX.md 来支持不同的语言，例如 Readme\_en.md, Readme\_zh.md
-2.  Gitee 官方博客 [blog.gitee.com](https://blog.gitee.com)
-3.  你可以 [https://gitee.com/explore](https://gitee.com/explore) 这个地址来了解 Gitee 上的优秀开源项目
-4.  [GVP](https://gitee.com/gvp) 全称是 Gitee 最有价值开源项目，是综合评定出的优秀开源项目
-5.  Gitee 官方提供的使用手册 [https://gitee.com/help](https://gitee.com/help)
-6.  Gitee 封面人物是一档用来展示 Gitee 会员风采的栏目 [https://gitee.com/gitee-stars/](https://gitee.com/gitee-stars/)

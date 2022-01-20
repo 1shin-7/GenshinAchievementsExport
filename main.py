@@ -123,15 +123,11 @@ def get_page(name):
                 worksheet_write.cell(worksheet_index,5).value=ans
                 worksheet_index+=1
             break
-        if name!='天地万象' and name!='心跳的记忆':
-            move_pos=200
-        else:
-            move_pos=10
         lastbox=frameworks[-1]
         xpos=lastbox[0]+lastbox[2]//2+100
         ypos=lastbox[1]+lastbox[3]//2
         pyautogui.moveTo(xpos,ypos)
-        pyautogui.dragTo(xpos,move_pos,duration=1.5,tween=pyautogui.easeOutQuad,button='left')
+        pyautogui.dragTo(xpos,200,duration=1,tween=pyautogui.easeOutQuad,button='left')
         pyautogui.click(xpos,200)
         
             
@@ -191,7 +187,7 @@ if __name__=='__main__':
     worksheet_index=2
     keyboard.wait('r')
 
-    Need_Speaker=True
+    Need_Speaker=False
 
     if Need_Speaker:
         speak.Speak('程序启动') 
