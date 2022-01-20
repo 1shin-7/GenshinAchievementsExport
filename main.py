@@ -1,16 +1,43 @@
-﻿
-from itertools import filterfalse
-from re import I
-import cv2
+﻿import cv2
 import keyboard
 import numpy as np
-from numpy.lib.shape_base import take_along_axis
 import pyautogui
 from paddleocr import PaddleOCR
 import win32com.client
 import time
 import openpyxl
 
+
+def minDistance(w1,w2):
+	m,n = len(w1),len(w2)
+	if(m==0):
+		return m
+	if(n==0):
+		return n
+	step = [[0]*(n+1)for _ in range(m+1)]
+	for i in range(1,m+1):step[i][0]=i
+	for j in range(1,n+1):step[0][j]=j
+	for i in range(1,m+1):
+		for j in range(1,n+1):
+			if w1[i-1] == w2[j-1] :
+				diff=0
+			else:diff=1
+			step[i][j] = min(step[i-1][j-1],min(step[i-1][j],step[i][j-1]))+diff	
+	return step[m][n]
+def Search(a,list):
+    for x in list:
+        if minDistance(a,x)<3:
+            return True
+    return False
+
+def Find(a):
+    with open('已知栏目.txt','r') as f:
+        txt=f.readlines()
+    names=[x.strip() for x in txt]
+    dis=[]
+    for name in names:
+        dis.append(minDistance(a,name))
+    return names[dis.index(min(dis))]
 def cross(bbox,frameworks):
     for i,fw in enumerate(frameworks):
         center_fw=(fw[0]+fw[2]//2,fw[1]+fw[3]//2)
@@ -20,10 +47,10 @@ def cross(bbox,frameworks):
     return -1
 
 def get_rects(image,mode='left'):
-    img=cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
+    image=cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
     thresh_min,thresh_max=(50,100)
-    img=cv2.Canny(img,thresh_min,thresh_max)
-    contours,hierachy=cv2.findContours(img,cv2.CHAIN_APPROX_SIMPLE,cv2.RETR_CCOMP)
+    image=cv2.Canny(image,thresh_min,thresh_max)
+    contours,hierachy=cv2.findContours(image,cv2.CHAIN_APPROX_SIMPLE,cv2.RETR_CCOMP)
     frameworks=[]
     if mode=='left': 
         for contour in contours:
@@ -44,72 +71,74 @@ def get_rects(image,mode='left'):
     return frameworks
 
 def get_page(name):
-    speak.Speak('开始整理'+name)
+    global worksheet_index
+    if Need_Speaker:
+        speak.Speak('开始整理'+name)
     text_list=[]
     info_list=[]
     complete_list=[]
-    if name in workbook.sheetnames:
-        del workbook[name]
-    worksheet=workbook.create_sheet(name)
-    worksheet.cell(1,1).value='序号'
-    worksheet.cell(1,2).value='名称'
-    worksheet.cell(1,3).value='内容'
-    worksheet.cell(1,4).value='完成日期或比例'
-    worksheet.cell(1,5).value='是否达成'
     RUN=True
     while RUN:
         pyautogui.moveTo(10,10)
         image=pyautogui.screenshot()
         image=cv2.cvtColor(np.asarray(image),cv2.COLOR_RGB2BGR)
         frameworks=get_rects(image,'right')
-        result=ocr.ocr(image)
-        tmp_list=['']*len(frameworks)
-        info=['']*len(frameworks)
-        complete=['']*len(frameworks)
-        for line in result:
-            text=line[1][0]
-            if text[0]=='大' or text[0]=='达':
-                continue
-            bbox=(line[0][0][0],line[0][0][1],line[0][2][0]-line[0][0][0],line[0][2][1]-line[0][0][1])
-            index=cross(bbox,frameworks)
-            if index!=-1:
-                if tmp_list[index]=='':
-                    tmp_list[index]=text
-                elif len(text.split('/'))>1:
-                    complete[index]=text
-                else:
-                    info[index]=text
         all_seen=True 
-        for x,y,z in zip(tmp_list,info,complete):
-            if x=='' or '%' in x:
-                continue
-            if not x in text_list:
-                text_list.append(x)
-                info_list.append(y)
-                complete_list.append(z)
+        for i,fw in enumerate(frameworks):
+            if i==0:
+                if name!='天地万象' and name!='心跳的记忆':
+                    continue 
+            left=fw[0]
+            right=fw[0]+fw[2]
+            up=fw[1]
+            down=fw[1]+fw[3]
+            width=right-left 
+            height=down-up 
+            image_taskname=image[up:down-height*5//10,left+width*1//10:right-width*3//10]
+            image_taskinfo=image[up+height*5//10:down,left+width*1//10:right-width*3//10]
+            image_complete=image[up:down,left+width*85//100:right]
+            cv2.rectangle(image,(left+width*1//10,up),(right-width*3//10,down-height*5//10),(255,0,0),3)
+            cv2.rectangle(image,(left+width*1//10,up+height*5//10),(right-width*3//10,down),(0,255,0),3)
+            cv2.rectangle(image,(left+width*85//100,up+height*1//10),(right,down),(0,0,255),3)
+            taskname=ocr.ocr(image_taskname)[0][1][0]
+            taskinfo=ocr.ocr(image_taskinfo)[0][1][0]
+            complete=ocr.ocr(image_complete)[0][1][0]
+            if not Search(taskname,text_list):
+                text_list.append(taskname)
+                info_list.append(taskinfo)
+                complete_list.append(complete)
                 all_seen=False
         if all_seen:
-            #print(text_list)
-            #print(info_list)
-            #print(complete_list)
-            speak.Speak(name+'整理完毕')
-            for i,x in enumerate(text_list):
-                worksheet.cell(i+2,1).value=i 
-                worksheet.cell(i+2,2).value=x 
-                worksheet.cell(i+2,3).value=info_list[i]
-                worksheet.cell(i+2,4).value=complete_list[i]
-                worksheet.cell(i+2,5).value='yes' if len(complete_list[i].split('/'))>2 else 'no'
-            break                   
+            if Need_Speaker:
+                speak.Speak(name+'整理完毕')
+            for i,x in enumerate(text_list):                
+                worksheet_write.cell(worksheet_index,1).value=name
+                worksheet_write.cell(worksheet_index,2).value=i+1
+                worksheet_write.cell(worksheet_index,3).value=x 
+                worksheet_write.cell(worksheet_index,4).value=info_list[i]
+                if len(complete_list[i].split('/'))>1:
+                    ans=complete_list[i]
+                else:
+                    ans='达成'
+                worksheet_write.cell(worksheet_index,5).value=ans
+                worksheet_index+=1
+            break
+        if name!='天地万象' and name!='心跳的记忆':
+            move_pos=200
+        else:
+            move_pos=10
         lastbox=frameworks[-1]
         xpos=lastbox[0]+lastbox[2]//2+100
         ypos=lastbox[1]+lastbox[3]//2
         pyautogui.moveTo(xpos,ypos)
-        pyautogui.dragTo(xpos,10,duration=1.5,tween=pyautogui.easeOutQuad,button='left')
+        pyautogui.dragTo(xpos,move_pos,duration=1.5,tween=pyautogui.easeOutQuad,button='left')
         pyautogui.click(xpos,200)
+        
             
 
 def get_indexs():
-    speak.Speak('查找列表')
+    if Need_Speaker:
+        speak.Speak('查找列表')
     text_list=[]
     RUN=True
     while RUN:        
@@ -117,47 +146,54 @@ def get_indexs():
         image=pyautogui.screenshot()
         image=cv2.cvtColor(np.asarray(image),cv2.COLOR_RGB2BGR)
         frameworks=get_rects(image,'left')
-        tmp_list=['']*len(frameworks)
-        up=80
-        down=1080
-        left=60
-        right=600
-        result=ocr.ocr(image[up:down,left:right])
-        for line in result:
-            text=line[1][0]
-            bbox=(line[0][0][0]+left,line[0][0][1]+up,line[0][2][0]-line[0][0][0],line[0][2][1]-line[0][0][1])
-            index=cross(bbox,frameworks)
-            if index!=-1:
-                if tmp_list[index]=='':
-                    tmp_list[index]=text
         all_seen=True 
-        for i,x in enumerate(tmp_list):
-            fw=frameworks[i]
-            if not x in text_list:
-                text_list.append(x)
-                pyautogui.doubleClick(fw[0]+fw[2]//2,fw[1]+fw[3]//2)
+        for fw in frameworks:
+            left=fw[0]
+            right=fw[0]+fw[2]
+            up=fw[1]
+            down=fw[1]+fw[3]
+            width=right-left 
+            height=down-up 
+            result=ocr.ocr(image[up:down-height*5//10,left+width*1//10:right-width*2//10])
+            text=result[0][1][0]
+            text=Find(text)
+            if not text in text_list:
+                text_list.append(text)
+                pyautogui.doubleClick(left+width//2,up+height//2)
                 time.sleep(1)
-                all_seen=False 
-                get_page(x)
-                time.sleep(1)
+                get_page(text)
+                workbook_write.save('test.xlsx')
+                all_seen=False
         if all_seen:
-            #print(text_list)
-            speak.Speak('列表查找完毕') 
+            if Need_Speaker:
+                speak.Speak('查找完毕') 
             break
-        
-        lastbox=frameworks[0]
-        xpos=lastbox[0]+lastbox[2]//2+100
-        ypos=lastbox[1]+lastbox[3]//2
-        pyautogui.moveTo(xpos,ypos)
-        pyautogui.dragTo(xpos,10,duration=1.5,tween=pyautogui.easeOutQuad,button='left')
-        time.sleep(1)
+        else:
+            lastbox=frameworks[-1]
+            xpos=lastbox[0]+lastbox[2]//2+100
+            ypos=lastbox[1]+lastbox[3]//2
+            pyautogui.moveTo(xpos,ypos)
+            pyautogui.dragTo(xpos,10,duration=1.5,tween=pyautogui.easeOutQuad,button='left')
+            time.sleep(1)
 if __name__=='__main__':
     speak = win32com.client.Dispatch('SAPI.SPVOICE')
     ocr= PaddleOCR(lang='ch')
-    workbook=openpyxl.Workbook()
+    workbook_write=openpyxl.Workbook()
+    if 'Full' in workbook_write.sheetnames:
+        del workbook_write['Full']
+    worksheet_write=workbook_write.create_sheet('Full')    
+    worksheet_write.cell(1,1).value='所属栏目'
+    worksheet_write.cell(1,2).value='序号'
+    worksheet_write.cell(1,3).value='名称'
+    worksheet_write.cell(1,4).value='内容'
+    worksheet_write.cell(1,5).value='达成情况'
+
+    worksheet_index=2
     keyboard.wait('r')
-    speak.Speak('程序启动') 
+
+    Need_Speaker=True
+
+    if Need_Speaker:
+        speak.Speak('程序启动') 
     get_indexs()
-    del workbook['Sheet']
-    workbook.save('test.xlsx')
 
