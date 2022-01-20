@@ -1,4 +1,4 @@
 {
   "TestFramework": "Pytest",
-  "Interpreter": "Global|VisualStudio|py37-torch-gpu"
+  "Interpreter": "CondaEnv|CondaEnv|py37-paddle"
 }
