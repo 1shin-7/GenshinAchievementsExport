@@ -19,4 +19,5 @@ https://www.bilibili.com/video/BV1v44y1L7Et?share_source=copy_web
 2、多线程或许可以节省时间。一个线程获取图片，另一个线程用来识别。
 3、让参数可以设置
 
-
+#### 目前问题
+想打包成exe，但是paddleocr用pyinstaller打包一直出问题
